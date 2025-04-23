@@ -41,7 +41,6 @@ export type User = {
 export async function getUserProfile(): Promise<User | null> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth-token")?.value;
-  console.log("🚀 ~ getUserProfile ~ token:", token);
 
   if (!token) {
     return null;
