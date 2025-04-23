@@ -1,7 +1,6 @@
 "use server";
 
 import { cookies } from "next/headers";
-import axios from "axios";
 import { API_ENDPOINTS } from "@/config/api";
 
 export type User = {
@@ -38,30 +37,36 @@ export type User = {
   verified: boolean;
 };
 
-export async function getUserProfile(): Promise<User | null> {
+export async function getUserProfile(): Promise<User | undefined> {
   const cookieStore = await cookies();
   const token = cookieStore.get("auth-token")?.value;
 
   if (!token) {
-    return null;
+    return;
   }
 
   try {
-    // Call the external API to fetch user profile
-    const response = await axios.get(API_ENDPOINTS.USER_PROFILE, {
+    const response = await fetch(API_ENDPOINTS.USER_PROFILE, {
       headers: {
         Authorization: `Bearer ${token}`,
       },
+      cache: "no-store",
     });
 
-    if (response.data.success) {
-      return response.data.user;
+    if (!response.ok) {
+      console.error("Error fetching user profile:", response.statusText);
+      return;
+    }
+
+    const data = await response.json();
+
+    if (data.success) {
+      return data.user;
     }
   } catch (error) {
-    console.log("🚀 ~ getUserProfile ~ error:", error);
     // Handle network errors or API exceptions gracefully
     console.error("Error fetching user profile:", error);
   }
 
-  return null;
+  return;
 }

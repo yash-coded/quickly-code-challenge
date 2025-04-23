@@ -2,7 +2,6 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import axios from "axios";
 import { API_ENDPOINTS } from "@/config/api";
 
 type LoginResult = {
@@ -24,37 +23,52 @@ export async function login(
     };
   }
 
-  const response = await axios.post(API_ENDPOINTS.LOGIN, {
-    email,
-    password,
-  });
-
-  if (response.data.success) {
-    const cookieStore = await cookies();
-    cookieStore.set({
-      name: "auth-token",
-      value: response.data.token,
-      httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
-      sameSite: "strict",
-      path: "/",
-      maxAge: 60 * 60 * 24 * 7,
+  try {
+    const response = await fetch(API_ENDPOINTS.LOGIN, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ email, password }),
+      cache: "no-store",
     });
 
-    redirect("/profile");
-  } else {
+    const data = await response.json();
+
+    if (data.success) {
+      const cookieStore = await cookies();
+      cookieStore.set("auth-token", data.token, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === "production",
+        sameSite: "strict",
+        path: "/",
+        maxAge: 60 * 60 * 24 * 7,
+      });
+
+      return {
+        success: true,
+        message: "Login successful",
+      };
+    } else {
+      return {
+        success: false,
+        message: data.message || "Login failed",
+      };
+    }
+  } catch (error) {
     return {
       success: false,
-      message: response.data.message || "Login failed",
+      message:
+        error instanceof Error
+          ? `Authentication failed: ${error.message}`
+          : "An unexpected error occurred during login. Please try again.",
     };
   }
 }
 
 export async function logout() {
   const cookieStore = await cookies();
-  cookieStore.set({
-    name: "auth-token",
-    value: "",
+  cookieStore.set("auth-token", "", {
     httpOnly: true,
     secure: process.env.NODE_ENV === "production",
     expires: new Date(0),

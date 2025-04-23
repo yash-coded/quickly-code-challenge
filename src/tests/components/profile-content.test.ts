@@ -1,6 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { getUserProfile } from "@/actions/user";
-import axios from "axios";
 
 // Mock the API_ENDPOINTS
 vi.mock("@/config/api", () => ({
@@ -27,13 +26,7 @@ vi.mock("next/headers", () => {
   };
 });
 
-vi.mock("axios", () => {
-  return {
-    default: {
-      get: vi.fn(),
-    },
-  };
-});
+global.fetch = vi.fn();
 
 const mockUserData = {
   id: 1,
@@ -78,12 +71,14 @@ describe("User Actions", () => {
       return null;
     });
 
-    vi.mocked(axios.get).mockResolvedValue({
-      data: {
-        success: true,
-        user: mockUserData,
-      },
-    });
+    vi.mocked(fetch).mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          success: true,
+          user: mockUserData,
+        }),
+    } as Response);
   });
 
   afterEach(() => {
@@ -93,50 +88,48 @@ describe("User Actions", () => {
   it("getUserProfile returns user data on successful API response", async () => {
     const user = await getUserProfile();
 
-    expect(axios.get).toHaveBeenCalledWith(
+    expect(fetch).toHaveBeenCalledWith(
       "https://api-dev.quicklyinc.com/auth/user",
       {
         headers: {
           Authorization: "Bearer mocked-token",
         },
+        cache: "no-store",
       }
     );
 
-    expect(user).not.toBeNull();
+    expect(user).not.toBeUndefined();
     expect(user?.full_name).toBe("John Doe");
     expect(user?.Company.name).toBe("Acme Inc.");
   });
 
-  it("getUserProfile returns null when no auth token is available", async () => {
+  it("getUserProfile returns undefined when no auth token is available", async () => {
     cookiesMock.get.mockReturnValue(null);
 
     const user = await getUserProfile();
 
-    expect(axios.get).not.toHaveBeenCalled();
-    expect(user).toBeNull();
+    expect(fetch).not.toHaveBeenCalled();
+    expect(user).toBeUndefined();
   });
 
-  it("getUserProfile returns null on API failure", async () => {
-    vi.mocked(axios.get).mockResolvedValueOnce({
-      data: {
-        success: false,
-      },
-    });
+  it("getUserProfile returns undefined on API failure", async () => {
+    vi.mocked(fetch).mockResolvedValueOnce({
+      ok: false,
+      statusText: "Not Found",
+    } as Response);
 
     const user = await getUserProfile();
 
-    expect(axios.get).toHaveBeenCalled();
-    expect(user).toBeNull();
+    expect(fetch).toHaveBeenCalled();
+    expect(user).toBeUndefined();
   });
 
   it("getUserProfile handles network errors gracefully", async () => {
-    vi.mocked(axios.get).mockImplementationOnce(() => {
-      throw new Error("Network error");
-    });
+    vi.mocked(fetch).mockRejectedValueOnce(new Error("Network error"));
 
     const user = await getUserProfile();
 
-    expect(axios.get).toHaveBeenCalled();
-    expect(user).toBeNull();
+    expect(fetch).toHaveBeenCalled();
+    expect(user).toBeUndefined();
   });
 });

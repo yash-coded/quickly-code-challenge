@@ -1,16 +1,11 @@
 import { ReadonlyRequestCookies } from "next/dist/server/web/spec-extension/adapters/request-cookies";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { login, logout } from "@/actions/auth";
-import axios from "axios";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { API_ENDPOINTS } from "@/config/api";
 
-vi.mock("axios", () => ({
-  default: {
-    post: vi.fn(),
-  },
-}));
+global.fetch = vi.fn();
 
 vi.mock("next/headers", () => ({
   cookies: vi.fn().mockReturnValue({
@@ -46,7 +41,7 @@ describe("Authentication Actions", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Email and password are required");
-      expect(axios.post).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
     });
 
     it("returns error when password is missing", async () => {
@@ -55,18 +50,20 @@ describe("Authentication Actions", () => {
 
       expect(result.success).toBe(false);
       expect(result.message).toContain("Email and password are required");
-      expect(axios.post).not.toHaveBeenCalled();
+      expect(fetch).not.toHaveBeenCalled();
     });
 
     it("sets cookie and redirects on successful login", async () => {
       const formData = createMockFormData("test@example.com", "password123");
 
-      vi.mocked(axios.post).mockResolvedValueOnce({
-        data: {
-          success: true,
-          token: "mock-token-value",
-        },
-      });
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: true,
+            token: "mock-token-value",
+          }),
+      } as Response);
 
       const cookiesMock = {
         set: vi.fn(),
@@ -78,31 +75,43 @@ describe("Authentication Actions", () => {
       await login(null, formData);
 
       // Verify API call
-      expect(axios.post).toHaveBeenCalledWith(API_ENDPOINTS.LOGIN, {
-        email: "test@example.com",
-        password: "password123",
+      expect(fetch).toHaveBeenCalledWith(API_ENDPOINTS.LOGIN, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          email: "test@example.com",
+          password: "password123",
+        }),
+        cache: "no-store",
       });
 
       expect(cookies).toHaveBeenCalled();
       expect(cookiesMock.set).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "auth-token",
-          value: "mock-token-value",
-        })
+        "auth-token",
+        "mock-token-value",
+        {
+          httpOnly: true,
+          secure: false,
+          sameSite: "strict",
+          path: "/",
+          maxAge: 60 * 60 * 24 * 7,
+        }
       );
-
-      expect(redirect).toHaveBeenCalledWith("/profile");
     });
 
     it("returns error message on failed login", async () => {
       const formData = createMockFormData("test@example.com", "wrong-password");
 
-      vi.mocked(axios.post).mockResolvedValueOnce({
-        data: {
-          success: false,
-          message: "Invalid credentials",
-        },
-      });
+      vi.mocked(fetch).mockResolvedValueOnce({
+        ok: true,
+        json: () =>
+          Promise.resolve({
+            success: false,
+            message: "Invalid credentials",
+          }),
+      } as Response);
 
       const result = await login(null, formData);
 
@@ -124,13 +133,13 @@ describe("Authentication Actions", () => {
       await logout();
 
       expect(cookies).toHaveBeenCalled();
-      expect(cookiesMock.set).toHaveBeenCalledWith(
-        expect.objectContaining({
-          name: "auth-token",
-          value: "",
-          expires: expect.any(Date),
-        })
-      );
+      expect(cookiesMock.set).toHaveBeenCalledWith("auth-token", "", {
+        httpOnly: true,
+        secure: false,
+        expires: expect.any(Date),
+        sameSite: "strict",
+        path: "/",
+      });
 
       expect(redirect).toHaveBeenCalledWith("/login");
     });

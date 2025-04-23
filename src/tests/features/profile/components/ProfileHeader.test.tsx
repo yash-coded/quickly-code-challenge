@@ -57,8 +57,37 @@ vi.mock("@/components/logout-button", () => ({
 
 describe("ProfileHeader", () => {
   const mockUser = {
-    fullName: "John Doe",
+    full_name: "John Doe",
     email: "john@example.com",
+    id: 1,
+    first_name: "John",
+    last_name: "Doe",
+    cognito_id: "mock-cognito-id",
+    company_id: 1,
+    phone: "+1234567890",
+    createdAt: "2023-01-01T00:00:00.000Z",
+    updatedAt: "2023-01-01T00:00:00.000Z",
+    deleted_at: null,
+    CompanyId: 1,
+    Company: {
+      id: 1,
+      name: "Acme Inc.",
+      address_line_1: "123 Main St",
+      address_line_2: "Suite 100",
+      address_city: "New York",
+      address_state: "NY",
+      address_zip: "10001",
+      address_country: "USA",
+      max_credit_amount: null,
+      approved: true,
+      logo_url: null,
+      default_currency: "USD",
+      createdAt: "2023-01-01T00:00:00.000Z",
+      updatedAt: "2023-01-01T00:00:00.000Z",
+      deleted_at: null,
+    },
+    roles: "user",
+    verified: true,
   };
 
   it("renders user's full name", () => {

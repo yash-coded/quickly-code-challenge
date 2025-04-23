@@ -1,13 +1,11 @@
+import { User } from "@/actions/user";
 import { LogoutButton } from "@/components/logout-button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
-interface UserProps {
-  fullName: string;
-  email: string;
-}
+export function ProfileHeader(props: { user?: User }) {
+  const getInitials = (name: string | undefined) => {
+    if (!name) return "";
 
-export function ProfileHeader({ user }: { user: UserProps }) {
-  const getInitials = (name: string) => {
     return name
       .split(" ")
       .map((part) => part[0])
@@ -17,15 +15,17 @@ export function ProfileHeader({ user }: { user: UserProps }) {
 
   return (
     <div className="flex justify-between items-center mb-8">
-      <div className="flex items-center gap-4">
-        <Avatar>
-          <AvatarFallback>{getInitials(user.fullName)}</AvatarFallback>
-        </Avatar>
-        <div>
-          <h1 className="text-3xl font-bold">{user.fullName}</h1>
-          <p className="text-gray-500">{user.email}</p>
+      {props.user && (
+        <div className="flex items-center gap-4">
+          <Avatar>
+            <AvatarFallback>{getInitials(props.user.full_name)}</AvatarFallback>
+          </Avatar>
+          <div>
+            <h1 className="text-3xl font-bold">{props.user.full_name}</h1>
+            <p className="text-gray-500">{props.user.email}</p>
+          </div>
         </div>
-      </div>
+      )}
       <LogoutButton />
     </div>
   );

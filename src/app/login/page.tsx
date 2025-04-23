@@ -23,6 +23,8 @@ import {
 } from "@/components/ui/card";
 import { login } from "@/actions/auth";
 import { useForm } from "react-hook-form";
+import { useRouter } from "next/navigation";
+import { useEffect } from "react";
 
 const loginSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
@@ -47,6 +49,7 @@ function SubmitButton() {
 }
 
 export default function LoginPage() {
+  const router = useRouter();
   const [state, formAction] = useActionState(login, {
     success: false,
     message: "",
@@ -59,6 +62,12 @@ export default function LoginPage() {
       password: "",
     },
   });
+
+  useEffect(() => {
+    if (state.success) {
+      router.push("/profile");
+    }
+  }, [state.success, router]);
 
   return (
     <div className="flex justify-center items-center min-h-screen bg-gray-50">
@@ -113,6 +122,9 @@ export default function LoginPage() {
               />
               {state.message && !state.success && (
                 <div className="text-red-500 text-sm">{state.message}</div>
+              )}
+              {state.message && state.success && (
+                <div className="text-green-500 text-sm">{state.message}</div>
               )}
               <SubmitButton />
             </form>
